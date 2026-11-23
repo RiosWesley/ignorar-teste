@@ -1,0 +1,11 @@
+# Formato: email----senha----recuperacao----2fa_secret
+# Campos vazios sao permitidos. Cartao pode ser adicionado depois no Play Store.
+#
+# Exemplo simples:
+# abc@gmail.com----senha123----
+#
+# Exemplo com cartao:
+# abc@gmail.com----senha123--------4242424242424242----10/29----326----NOME----97201
+#
+# Conta atual do dispositivo (use com --account current@device):
+current@device----
