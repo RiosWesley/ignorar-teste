@@ -215,6 +215,65 @@ No MuMu em português aparece "**Assinar**" e "R$". Correção aplicada em
 
 ---
 
+## Stack de trial (acumular até 24 meses)
+
+O Google permite **upgrade de assinatura** usando o `purchaseToken` da assinatura
+atual com `ReplaceProrationMode = 5` (`CHARGE_FULL_PRICE`). Isso faz o Google
+"dobrar" o tempo restante. Sequência validada:
+
+| Passo | Plan | Offer | Tempo total |
+|-------|------|-------|-------------|
+| 1 | `pro12` | `12months-eft` | 12 meses |
+| 2 | `--stack --plan pro6` | `6months-eft` | 18 meses |
+| 3 | `--stack --plan pro6b` | `6months-eft-2` | 24 meses |
+| 4 | `--stack --plan pro6c` | `6months-eft-ss-2026` | ❌ **QUEBRADO** |
+
+### ⚠️ Teto real: 24 meses
+
+O **Passo 4** (`6months-eft-ss-2026`) falha sempre com "Ocorreu um erro do nosso lado.
+Tente novamente." — testado em múltiplas contas e emuladores diferentes. O offer
+é listado no BillingClient mas recusado no checkout. **Não adianta insistir.**
+
+### Comandos (use `ultra0_stack.py`)
+
+```powershell
+# Passo 1 — 12 meses
+python ultra0_stack.py --account "current@device" --no-add --force --plan pro12 --serial 127.0.0.1:16384
+
+# Passo 2 — +6 (18 meses)
+python ultra0_stack.py --account "current@device" --no-add --force --stack --plan pro6 --serial 127.0.0.1:16384
+
+# Passo 3 — +6 (24 meses)
+python ultra0_stack.py --account "current@device" --no-add --force --stack --plan pro6b --serial 127.0.0.1:16384
+```
+
+Ou pelos launchers em `scripts/`:
+```powershell
+python scripts/run_stack_step1.py
+python scripts/run_stack_step2.py
+python scripts/run_stack_step3.py
+```
+
+### Dicas que funcionaram
+
+- **Reinicie o emulador antes de cada stack.** O Play Store entra em estado
+  degradado ("failed to attach") depois de várias execuções — um restart limpo
+  resolve.
+- O script lê o `purchaseToken` automaticamente do `library.db`
+  (`/data/data/com.android.vending/databases/library.db`).
+- Entre passos, aguarde alguns segundos para o DB gravar o novo token.
+- Use `scripts/check_validity2.py` para conferir a data de validade após cada passo.
+
+### Diferenças do `ultra0_stack.py`
+
+Este arquivo é o `ultra0.py` com:
+- `getActivity()` corrigido (usa `mActivities` em vez de `Java.choose`, que falha
+  em Android 12 x86_64)
+- UTF-8 no stdout
+- Suporte a português ("Assinar", "R$", "grátis") sem clicar automaticamente
+
+---
+
 ## Solução de problemas
 
 ### "Play Store não inicia / failed to attach - start timeout"
@@ -269,9 +328,19 @@ O script empurra o módulo automaticamente na primeira execução.
 ├── setup_env.py           # setup automático de ambiente
 ├── query_sku.py           # utilitário de consulta de SKU
 ├── requirements.txt       # frida>=16.0
+├── ultra0_stack.py        # versão stack (getActivity corrigido + PT)
 ├── scripts/
-│   ├── launch_check.ps1   # verificação de ambiente
-│   ├── launch_list.ps1    # listar offers
-│   └── launch_trial.ps1   # ativar trial
+│   ├── launch_check.ps1      # verificação de ambiente
+│   ├── launch_list.ps1       # listar offers
+│   ├── launch_trial.ps1      # ativar trial
+│   ├── run_stack_step1.py    # stack: 12 meses
+│   ├── run_stack_step2.py    # stack: +6 (18 meses)
+│   ├── run_stack_step3.py    # stack: +6 (24 meses)
+│   ├── run_stack_step4.py    # stack: +6 (quebrado, documentado)
+│   ├── run_pro3.py           # trial 3 meses
+│   ├── run_pro6.py           # trial 6 meses
+│   ├── check_validity2.py    # conferir validade no library.db
+│   ├── resumo_contas.py      # resumir assinaturas por conta
+│   └── check_all_offers_new.py # listar todas as offers
 └── accounts.example.txt   # exemplo de formato de conta
 ```
